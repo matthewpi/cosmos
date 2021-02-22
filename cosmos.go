@@ -22,3 +22,10 @@
 
 // Package cosmos ...
 package cosmos // import "github.com/matthewpi/cosmos"
+
+import (
+	_ "github.com/matthewpi/cosmos/internal/address"
+	_ "github.com/matthewpi/cosmos/internal/argon2"
+	_ "github.com/matthewpi/cosmos/internal/snowflake"
+	_ "github.com/matthewpi/cosmos/internal/uuid"
+)
