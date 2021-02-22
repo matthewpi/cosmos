@@ -1,0 +1,81 @@
+name: Test
+
+on:
+  push:
+    branches:
+      - master
+
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  test:
+    name: Test
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-20.04 ]
+        go: [ '1.16' ]
+
+        include:
+        - os: ubuntu-20.04
+          COSMOS_BIN_PATH: ./cmd/cosmos/cosmos
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - name: Install Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: ${{ matrix.go }}
+
+    - name: Code Checkout
+      uses: actions/checkout@v2
+
+    - name: Print Environment
+      id: env
+      run: |
+        printf "Go Executable Path: $(which go)\n"
+        printf "Go Version: $(go version)\n"
+        printf "\n\nGo Environment:\n\n"
+        go env
+        printf "\n\nSystem Environment:\n\n"
+        env
+        printf "Git version: $(git version)\n\n"
+        echo "::set-output name=version_tag::${GITHUB_REF/refs\/tags\//}"
+        echo "::set-output name=short_sha::$(git rev-parse --short HEAD)"
+        echo "::set-output name=go_cache::$(go env GOCACHE)"
+
+    - name: Build Cache
+      uses: actions/cache@v2
+      with:
+        path: ${{ steps.env.outputs.go_cache }}
+        key: ${{ runner.os }}-${{ matrix.go }}-go-test-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-${{ matrix.go }}-go-test
+
+    - name: Get Dependencies
+      run: |
+        go get -v -t -d ./...
+
+    - name: Build
+      working-directory: ./cmd/cosmos
+      env:
+        CGO_ENABLED: 0
+      run: |
+        CGO_ENABLED=0 go build -ldflags "-s -w" -trimpath -v
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: cosmos_${{ matrix.goos }}_${{ matrix.goarch }}
+        path: ${{ matrix.COSMOS_BIN_PATH }}
+
+    - name: Tests
+      run: |
+        go test ./...
+
+    - name: Tests (Race)
+      run: |
+        go test -race ./...
