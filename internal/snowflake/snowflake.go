@@ -21,7 +21,7 @@
 //
 
 // Package snowflake ...
-package snowflake // import "github.com/matthewpi/cosmos/internal/snowflake"
+package snowflake
 
 import (
 	"crypto/rand"

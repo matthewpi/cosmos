@@ -21,7 +21,7 @@
 //
 
 // Package uuid generates universally unique identifiers (version 4).
-package uuid // import "github.com/matthewpi/cosmos/internal/uuid"
+package uuid
 
 import (
 	"crypto/rand"

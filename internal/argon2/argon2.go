@@ -21,7 +21,7 @@
 //
 
 // Package argon2 provides an easy way to use the argon2 key derivation function.
-package argon2 // import "github.com/matthewpi/cosmos/internal/argon2"
+package argon2
 
 import (
 	"crypto/rand"

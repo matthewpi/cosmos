@@ -21,7 +21,7 @@
 //
 
 // Package address ...
-package address // import "github.com/matthewpi/cosmos/internal/address"
+package address
 
 import (
 	"errors"
