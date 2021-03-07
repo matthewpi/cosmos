@@ -28,7 +28,7 @@ import (
 	"github.com/matthewpi/cosmos/user"
 )
 
-func Test_NewUser(t *testing.T) {
+func Test_New(t *testing.T) {
 	for i, tc := range []struct {
 		email          string
 		password       []byte
@@ -48,7 +48,7 @@ func Test_NewUser(t *testing.T) {
 			expectErr:      nil,
 		},
 	} {
-		u, err := user.NewUser(tc.email, tc.password)
+		u, err := user.New(tc.email, tc.password)
 
 		if tc.expectErr != nil && err == nil {
 			t.Errorf("Test #%d: Expected error return value, but got \"%v\"", i, err)

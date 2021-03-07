@@ -54,8 +54,8 @@ type User struct {
 	CreatedAt time.Time `json:"created_at,omitempty"`
 }
 
-// NewUser .
-func NewUser(email string, password []byte) (*User, error) {
+// New .
+func New(email string, password []byte) (*User, error) {
 	now := time.Now()
 	u := &User{
 		ID:        snowflake.NewAtTime(now),
