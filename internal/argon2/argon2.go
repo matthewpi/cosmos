@@ -107,7 +107,9 @@ func Verify(input []byte, encodedHash string) error {
 		return err
 	}
 
-	// Compare the two hashes
+	// Compare the two hashes. Using subtle#ConstantTimeCompare is
+	// important for security as using bytes#Equal would make this
+	// vulnerable to timing attacks, which would not be good.
 	if subtle.ConstantTimeCompare(hash, comparisonHash) != 1 {
 		return ErrFailedVerify
 	}
