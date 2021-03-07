@@ -23,9 +23,23 @@
 package main
 
 import (
-	"fmt"
+	"github.com/matthewpi/cosmos"
+	"github.com/matthewpi/cosmos/internal/log"
 )
 
 func main() {
-	fmt.Println("Hello, world!")
+	l, err := log.New(log.WithLevel(log.InfoLevel))
+	if err != nil {
+		panic(err)
+		return
+	}
+
+	productionLogger, err := l.Production()
+	if err != nil {
+		panic(err)
+		return
+	}
+	log.SetGlobal(productionLogger)
+
+	cosmos.Log().Info("Hello, world!")
 }

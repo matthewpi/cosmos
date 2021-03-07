@@ -20,5 +20,13 @@
 // SOFTWARE.
 //
 
-// Package cosmos ...
 package cosmos
+
+import (
+	"go.uber.org/zap"
+)
+
+// Log returns the currently configured logger.
+func Log() *zap.Logger {
+	return zap.L()
+}
