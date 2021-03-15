@@ -28,12 +28,45 @@ import (
 	"time"
 )
 
+// Network .
+type Network string
+
+func (n Network) String() string {
+	return string(n)
+}
+
+const (
+	NetworkTCP        Network = "tcp"
+	NetworkTCP4       Network = "tcp4"
+	NetworkTCP6       Network = "tcp6"
+	NetworkUNIX       Network = "unix"
+	NetworkUNIXPacket Network = "unixpacket"
+)
+
+// Listener .
+type Listener struct {
+	// Network .
+	Network Network
+	// Address .
+	Address string
+
+	// KeepAlive .
+	KeepAlive time.Duration
+
+	// CertPath .
+	CertPath string
+	// KeyPath .
+	KeyPath string
+}
+
 // TCPKeepAliveListener .
 type TCPKeepAliveListener struct {
 	*net.TCPListener
 
 	KeepAlive time.Duration
 }
+
+var _ net.Listener = (*TCPKeepAliveListener)(nil)
 
 // AcceptTCP .
 func (l TCPKeepAliveListener) AcceptTCP() (*net.TCPConn, error) {
@@ -50,18 +83,10 @@ func (l TCPKeepAliveListener) AcceptTCP() (*net.TCPConn, error) {
 	return c, nil
 }
 
-// Accept .
-func (l TCPKeepAliveListener) Accept() (net.Conn, error) {
-	return l.AcceptTCP()
-}
-
 // Wrap .
-func Wrap(listener net.Listener, keepAlive time.Duration) net.Listener {
-	if tcpListener, ok := listener.(*net.TCPListener); ok {
-		return TCPKeepAliveListener{
-			TCPListener: tcpListener,
-			KeepAlive:   keepAlive,
-		}
+func Wrap(l *net.TCPListener, keepAlive time.Duration) net.Listener {
+	return TCPKeepAliveListener{
+		TCPListener: l,
+		KeepAlive:   keepAlive,
 	}
-	return listener
 }
