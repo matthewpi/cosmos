@@ -49,6 +49,7 @@ func main() {
 		return
 	}
 	log.SetGlobal(productionLogger)
+	defer cosmos.Log().Sync()
 
 	cosmos.Log().Info("Hello, world!")
 

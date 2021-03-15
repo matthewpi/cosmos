@@ -32,8 +32,10 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/pkg/errors"
+	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 
+	"github.com/matthewpi/cosmos"
 	"github.com/matthewpi/cosmos/internal/listener"
 )
 
@@ -123,33 +125,42 @@ func (s *Server) Serve(ctx context.Context) error {
 	if s.listeners == nil || len(s.listeners) < 1 {
 		return ErrNoListeners
 	}
+	l := zap.NewStdLog(cosmos.Log())
 	g, ctx := errgroup.WithContext(ctx)
 	for i, lc := range s.config.Listeners {
 		hs := &http.Server{
+			Addr:    lc.Address,
 			Handler: s.router,
 
-			// TODO: Configuration options.
+			TLSConfig: nil,
+
 			ReadTimeout:       5 * time.Second,
 			ReadHeaderTimeout: 3 * time.Second,
 			WriteTimeout:      10 * time.Second,
 			IdleTimeout:       30 * time.Second,
+
+			MaxHeaderBytes: http.DefaultMaxHeaderBytes,
+
+			ErrorLog: l,
 		}
 		s.servers = append(s.servers, hs)
 
-		certPath := lc.CertPath
-		keyPath := lc.KeyPath
-		g.Go(func() error {
-			var err error
-			if certPath == "" || keyPath == "" {
-				err = hs.Serve(s.listeners[i])
-			} else {
-				err = hs.ServeTLS(s.listeners[i], certPath, keyPath)
-			}
-			if err == http.ErrServerClosed {
+		if certPath, keyPath := lc.CertPath, lc.KeyPath; certPath == "" || keyPath == "" {
+			g.Go(func() error {
+				if err := hs.Serve(s.listeners[i]); err != http.ErrServerClosed {
+					return err
+				}
 				return nil
-			}
-			return err
-		})
+			})
+		} else {
+			hs.TLSConfig = defaultTLSConfig
+			g.Go(func() error {
+				if err := hs.ServeTLS(s.listeners[i], certPath, keyPath); err != http.ErrServerClosed {
+					return err
+				}
+				return nil
+			})
+		}
 	}
 	return g.Wait()
 }
