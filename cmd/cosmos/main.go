@@ -23,8 +23,17 @@
 package main
 
 import (
+	"context"
+	"os"
+	"os/signal"
+	"time"
+
+	"go.uber.org/zap"
+
 	"github.com/matthewpi/cosmos"
+	"github.com/matthewpi/cosmos/internal/listener"
 	"github.com/matthewpi/cosmos/internal/log"
+	"github.com/matthewpi/cosmos/internal/server"
 )
 
 func main() {
@@ -42,4 +51,53 @@ func main() {
 	log.SetGlobal(productionLogger)
 
 	cosmos.Log().Info("Hello, world!")
+
+	s, err := server.New(
+		server.WithListener(listener.Listener{
+			Network: listener.NetworkTCP,
+			Address: ":9000",
+		}),
+	)
+	if err != nil {
+		cosmos.Log().Fatal("failed to create new server", zap.Error(err))
+		return
+	}
+	defer func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		if err := s.Close(ctx); err != nil {
+			cosmos.Log().Error("failed to close server", zap.Error(err))
+			return
+		}
+	}()
+
+	cosmos.Log().Info("attempting to start listening...")
+	if errs := s.Listen(); errs != nil {
+		var fields []zap.Field
+		for _, err := range errs {
+			fields = append(fields, zap.Error(err))
+		}
+		cosmos.Log().Error("failed to start listening", fields...)
+		return
+	}
+
+	go func() {
+		cosmos.Log().Info("attempting to start http servers...")
+		if err := s.Serve(context.Background()); err != nil {
+			cosmos.Log().Error("failed to start serving", zap.Error(err))
+			return
+		}
+	}()
+
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	<-c
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := s.Close(ctx); err != nil {
+		cosmos.Log().Error("failed to close server", zap.Error(err))
+		return
+	}
 }
