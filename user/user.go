@@ -38,8 +38,8 @@ type User struct {
 	// Email is the user's email address. (unique, end-user data)
 	Email string `json:"email,omitempty"`
 
-	// Password is an argon2 hash of the user's password. (technically end-user data)
-	Password string `json:"-"`
+	// password is an argon2 hash of the user's password. (technically end-user data)
+	password string
 
 	// Confirmed represents if the User has confirmed their email address.
 	Confirmed bool `json:"confirmed"`
@@ -78,11 +78,11 @@ func (u *User) SetPassword(password []byte) error {
 	if err != nil {
 		return err
 	}
-	u.Password = h
+	u.password = h
 	return nil
 }
 
 // VerifyPassword takes a password and the user's hashed password and verifies the password against the hashed password.
 func (u *User) VerifyPassword(password []byte) error {
-	return argon2.Verify(password, u.Password)
+	return argon2.Verify(password, u.password)
 }

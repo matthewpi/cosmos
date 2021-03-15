@@ -20,12 +20,10 @@
 // SOFTWARE.
 //
 
-package user_test
+package user
 
 import (
 	"testing"
-
-	"github.com/matthewpi/cosmos/user"
 )
 
 func Test_New(t *testing.T) {
@@ -48,7 +46,7 @@ func Test_New(t *testing.T) {
 			expectErr:      nil,
 		},
 	} {
-		u, err := user.New(tc.email, tc.password)
+		u, err := New(tc.email, tc.password)
 
 		if tc.expectErr != nil && err == nil {
 			t.Errorf("Test #%d: Expected error return value, but got \"%v\"", i, err)
@@ -69,11 +67,11 @@ func Test_New(t *testing.T) {
 			t.Errorf("Test #%d: Expected user, received nil", i)
 			continue
 		}
-		if tc.expectPassword && u.Password == "" {
+		if tc.expectPassword && u.password == "" {
 			t.Errorf("Test #%d: Expected user to have password, none set", i)
 			continue
 		}
-		if !tc.expectPassword && u.Password != "" {
+		if !tc.expectPassword && u.password != "" {
 			t.Errorf("Test #%d: Expected user to not have password, one was set", i)
 			continue
 		}
