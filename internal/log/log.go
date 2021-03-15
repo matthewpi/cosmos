@@ -64,6 +64,7 @@ func (l *Logger) Production() (*zap.Logger, error) {
 	config.EncodeTime = func(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
 		enc.AppendString(t.Format("15:04:05"))
 	}
+	config.EncodeDuration = zapcore.StringDurationEncoder
 	config.EncodeCaller = func(caller zapcore.EntryCaller, enc zapcore.PrimitiveArrayEncoder) {
 		if !caller.Defined {
 			enc.AppendString("undefined")

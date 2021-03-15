@@ -37,7 +37,7 @@ import (
 )
 
 func main() {
-	l, err := log.New(log.WithLevel(log.InfoLevel))
+	l, err := log.New(log.WithLevel(log.DebugLevel))
 	if err != nil {
 		panic(err)
 		return

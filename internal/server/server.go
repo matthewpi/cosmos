@@ -28,6 +28,7 @@ import (
 	"crypto/tls"
 	"net"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -37,6 +38,7 @@ import (
 
 	"github.com/matthewpi/cosmos"
 	"github.com/matthewpi/cosmos/internal/listener"
+	"github.com/matthewpi/cosmos/internal/metrics"
 )
 
 var (
@@ -97,6 +99,59 @@ func New(ops ...Opt) (*Server, error) {
 			return nil, err
 		}
 	}
+	s.router.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			start := time.Now()
+
+			defer func() {
+				if err := recover(); err != nil {
+					// I swear this log call will panic while we try
+					// to recover from a panic.
+					cosmos.Log().Error(
+						"recovered from panic in http#Handler",
+						zap.String("error", err.(string)),
+					)
+					// TODO: Write InternalServerError
+				}
+
+				remoteAddr, _, err := net.SplitHostPort(r.RemoteAddr)
+				if err != nil {
+					panic(err)
+					return
+				}
+
+				var route string
+				if ctx := chi.RouteContext(r.Context()); ctx != nil {
+					if route = ctx.RoutePattern(); route != "/" {
+						route = strings.TrimSuffix(route, "/")
+					}
+				} else {
+					route = r.URL.Path
+				}
+				if route == "" {
+					return
+				}
+
+				method := r.Method
+				code := 200
+				duration := time.Since(start)
+
+				metrics.RequestsTotal(method, route, code).Inc()
+				metrics.RequestDuration(route).Update(duration.Seconds())
+
+				cosmos.Log().Info(
+					"handled request",
+					zap.String("remote", remoteAddr),
+					zap.String("method", method),
+					zap.String("route", route),
+					zap.Int("code", code),
+					zap.Duration("duration", duration.Round(time.Microsecond)),
+				)
+			}()
+
+			next.ServeHTTP(w, r)
+		})
+	})
 	s.router.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 	})
