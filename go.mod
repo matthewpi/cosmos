@@ -3,7 +3,7 @@ module github.com/matthewpi/cosmos
 go 1.16
 
 require (
-	github.com/VictoriaMetrics/metrics v1.17.0
+	github.com/VictoriaMetrics/metrics v1.17.1
 	github.com/go-chi/chi/v5 v5.0.1
 	github.com/pkg/errors v0.9.1
 	go.uber.org/multierr v1.6.0 // indirect
