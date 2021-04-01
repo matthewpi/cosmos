@@ -37,7 +37,7 @@ FROM        alpine:3.13
 
 LABEL       author="Matthew Penner" maintainer="matthew@pterodactyl.io"
 
-RUN         apk add --update --no-cache ca-certificates=20191127-r5 tzdata=2021a-r0 curl=7.74.0-r0
+RUN         apk add --update --no-cache ca-certificates=20191127-r5 tzdata=2021a-r0
 COPY        --from=builder /app/cosmos /usr/bin/
 
-ENTRYPOINT  [ "cosmos", "start" ]
+ENTRYPOINT  [ "cosmos" ]
