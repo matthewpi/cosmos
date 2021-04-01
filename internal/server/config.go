@@ -26,8 +26,8 @@ import (
 	"github.com/matthewpi/cosmos/internal/listener"
 )
 
-// Config .
+// Config represents the configuration for a Server.
 type Config struct {
-	// Listeners .
+	// Listeners is a slice of listeners to bind to.
 	Listeners []listener.Listener
 }

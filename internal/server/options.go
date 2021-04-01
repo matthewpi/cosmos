@@ -26,10 +26,10 @@ import (
 	"github.com/matthewpi/cosmos/internal/listener"
 )
 
-// Opt is a configuration option to initialize a logger.
+// Opt is a configuration option to initialize a server.
 type Opt func(*Server) error
 
-// WithConfig .
+// WithConfig overwrites the config for the server.
 func WithConfig(c *Config) Opt {
 	return func(s *Server) error {
 		s.config = c
@@ -37,7 +37,7 @@ func WithConfig(c *Config) Opt {
 	}
 }
 
-// WithListener .
+// WithListener adds another listener to the server.
 func WithListener(l listener.Listener) Opt {
 	return func(s *Server) error {
 		s.config.Listeners = append(s.config.Listeners, l)

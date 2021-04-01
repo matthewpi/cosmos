@@ -74,7 +74,7 @@ func main() {
 	}()
 
 	cosmos.Log().Info("attempting to start listening...")
-	if errs := s.Listen(); errs != nil {
+	if errs := s.Listen(context.Background()); errs != nil {
 		var fields []zap.Field
 		for _, err := range errs {
 			fields = append(fields, zap.Error(err))

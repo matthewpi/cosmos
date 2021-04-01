@@ -28,7 +28,7 @@ import (
 	"time"
 )
 
-// Network .
+// Network represents a network type.
 type Network string
 
 func (n Network) String() string {
@@ -45,30 +45,31 @@ const (
 
 // Listener .
 type Listener struct {
-	// Network .
+	// Network is the network type to use.
 	Network Network
-	// Address .
+	// Address is the address to bind to.
 	Address string
 
-	// KeepAlive .
+	// KeepAlive is a duration to keep the connection alive for.
+	// Only used for NetworkTCP, NetworkTCP4, and NetworkTCP6
 	KeepAlive time.Duration
 
-	// CertPath .
+	// CertPath is a path to a SSL certificate.
 	CertPath string
-	// KeyPath .
+	// KeyPath is a path to a SSL private key.
 	KeyPath string
 }
 
-// TCPKeepAliveListener .
+// TCPKeepAliveListener is a TCPListener with a keep alive.
 type TCPKeepAliveListener struct {
 	*net.TCPListener
 
+	// KeepAlive .
 	KeepAlive time.Duration
 }
 
 var _ net.Listener = (*TCPKeepAliveListener)(nil)
 
-// AcceptTCP .
 func (l TCPKeepAliveListener) AcceptTCP() (*net.TCPConn, error) {
 	c, err := l.TCPListener.AcceptTCP()
 	if err != nil {
@@ -83,7 +84,8 @@ func (l TCPKeepAliveListener) AcceptTCP() (*net.TCPConn, error) {
 	return c, nil
 }
 
-// Wrap .
+// Wrap wraps a *net.TCPListener to enable the ability to specify a
+// "keep alive" on the connection.
 func Wrap(l *net.TCPListener, keepAlive time.Duration) net.Listener {
 	return TCPKeepAliveListener{
 		TCPListener: l,

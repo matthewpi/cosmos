@@ -27,17 +27,17 @@ import (
 )
 
 func TestNew(t *testing.T) {
-
+	// TODO
 }
 
 func TestServer_Listen(t *testing.T) {
-
+	// TODO
 }
 
 func TestServer_Serve(t *testing.T) {
-
+	// TODO
 }
 
 func TestServer_Close(t *testing.T) {
-
+	// TODO
 }

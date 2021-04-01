@@ -38,7 +38,7 @@ const (
 	// Max Domain Length (mailbox@DOMAIN.COM)
 	maxDomainLength = 255
 
-	// Max Domain Section Length (SOMETHING.domain.com)
+	// Max Domain Section Length (SECTION.domain.com)
 	maxDomainSectionLength = 64
 )
 
@@ -107,16 +107,14 @@ func IsMailboxValid(mailbox string) bool {
 	// According to the RFC spec, email addresses can be almost anything a user wants...
 	//
 	// Because of this, there is only a max length limit enforced, most special characters
-	// are allowed. This method is designed for both incoming and outgoing validation,
-	// meaning, there should not be a strict ruleset for validation, preventing false-positives
+	// are allowed.  This method is designed for both incoming and outgoing validation,
+	// meaning there should not be a strict ruleset for validation, preventing false-positives
 	// and improving execution times compared to using a complex and unnecessary regex.
 	//
-	// Honestly, the only true test to if an email address is valid is to try sending an email..
-
+	// The only true test to if an email address is valid is to try sending an email..
 	if len(mailbox) < 1 || len(mailbox) > maxMailboxLength {
 		return false
 	}
-
 	return true
 }
 

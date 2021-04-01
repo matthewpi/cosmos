@@ -37,7 +37,6 @@ import (
 	"golang.org/x/crypto/blake2b"
 )
 
-// Argon2 Settings
 var (
 	Memory      uint32 = 65536
 	Iterations  uint32 = 3
@@ -59,13 +58,11 @@ var (
 
 // Hash hashes the input using the argon2id algorithm.
 func Hash(input []byte) (string, error) {
-	// Generate a random salt
 	salt, err := generateRandomBytes(SaltLength)
 	if err != nil {
 		return "", errors.Wrap(err, "")
 	}
 
-	// Get the argon2 id key.
 	key, err := idKey(input, salt)
 	if err != nil {
 		return "", err
@@ -80,17 +77,20 @@ func Hash(input []byte) (string, error) {
 	b.WriteString(strconv.FormatUint(uint64(Iterations), 10))
 	b.WriteString(",p=")
 	b.WriteString(strconv.FormatUint(uint64(Parallelism), 10))
-	b.WriteString("$")
-	b.WriteString(encodeBase64(salt))
-	b.WriteString("$")
-	b.WriteString(encodeBase64(key))
+	b.WriteByte('$')
+	b.Write(encodeBase64(salt))
+	b.WriteByte('$')
+	b.Write(encodeBase64(key))
+	hashed := b.String()
 
-	// Verify that input against the hash, if this fails than we are fucked
-	if err := Verify(input, b.String()); err != nil {
+	// Verify that input against the hash. This ensures that
+	// the hash actually works so a user can actually log into
+	// their account.
+	if err := Verify(input, hashed); err != nil {
 		return "", errors.Wrap(err, "failed to verify input against hash")
 	}
 
-	return b.String(), nil
+	return hashed, nil
 }
 
 // Verify verifies the input against a hash.
@@ -101,7 +101,6 @@ func Verify(input []byte, encodedHash string) error {
 		return errors.Wrap(err, "failed to decode hash")
 	}
 
-	// Get the argon2 id key
 	comparisonHash, err := idKey(input, salt)
 	if err != nil {
 		return err
@@ -113,7 +112,6 @@ func Verify(input []byte, encodedHash string) error {
 	if subtle.ConstantTimeCompare(hash, comparisonHash) != 1 {
 		return ErrFailedVerify
 	}
-
 	return nil
 }
 
@@ -123,7 +121,6 @@ func idKey(input, salt []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	return argon2.IDKey(inputHash, salt, Iterations, Memory, Parallelism, KeyLength), nil
 }
 
@@ -138,7 +135,6 @@ func decodeHash(encodedHash string) ([]byte, []byte, error) {
 	if _, err := fmt.Sscanf(values[2], "v=%d", &version); err != nil {
 		return nil, nil, err
 	}
-
 	if version != argon2.Version {
 		return nil, nil, ErrIncompatibleVersion
 	}
@@ -147,12 +143,10 @@ func decodeHash(encodedHash string) ([]byte, []byte, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-
 	hash, err := decodeBase64(values[5])
 	if err != nil {
 		return nil, nil, err
 	}
-
 	return salt, hash, nil
 }
 
@@ -162,23 +156,22 @@ func blake2(input []byte) ([]byte, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create blake2 hash")
 	}
-
 	_, err = h.Write(input)
 	if err != nil {
 		return nil, err
 	}
-
 	sum := h.Sum(nil)
 
 	dst := make([]byte, hex.EncodedLen(len(sum)))
 	hex.Encode(dst, sum)
-
 	return dst, nil
 }
 
-// encodeBase64 encodes a string using base64.
-func encodeBase64(src []byte) string {
-	return base64.RawStdEncoding.EncodeToString(src)
+// encodeBase64 encodes a byte slice using base64.
+func encodeBase64(src []byte) []byte {
+	buf := make([]byte, base64.RawStdEncoding.EncodedLen(len(src)))
+	base64.RawStdEncoding.Encode(buf, src)
+	return buf
 }
 
 // decodeBase64 decodes a base64 string.
@@ -189,11 +182,8 @@ func decodeBase64(src string) ([]byte, error) {
 // generateRandomBytes generates crypto-secure random bytes.
 func generateRandomBytes(n uint32) ([]byte, error) {
 	bytes := make([]byte, n)
-
-	_, err := rand.Read(bytes)
-	if err != nil {
+	if _, err := rand.Read(bytes); err != nil {
 		return nil, err
 	}
-
 	return bytes, nil
 }

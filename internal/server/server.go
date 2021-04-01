@@ -37,47 +37,43 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/matthewpi/cosmos"
-	"github.com/matthewpi/cosmos/internal/listener"
 	"github.com/matthewpi/cosmos/internal/metrics"
 )
 
-var (
-	ErrNoListeners = errors.New("server: no listeners defined")
-)
+// ErrNoListeners .
+var ErrNoListeners = errors.New("server: no listeners defined")
 
-var (
-	defaultTLSConfig = &tls.Config{
-		NextProtos: []string{
-			"h2",
-			"http/1.1",
-		},
+var defaultTLSConfig = &tls.Config{
+	NextProtos: []string{
+		"h2",
+		"http/1.1",
+	},
 
-		CipherSuites: []uint16{
-			// TLS 1.0 - 1.2
-			tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
-			tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
-			tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
-			tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
-			tls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256,
-			tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256,
+	CipherSuites: []uint16{
+		// TLS 1.0 - 1.2
+		tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+		tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
+		tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+		tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+		tls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256,
+		tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256,
 
-			// TLS 1.3
-			tls.TLS_AES_128_GCM_SHA256,
-			tls.TLS_AES_256_GCM_SHA384,
-			tls.TLS_CHACHA20_POLY1305_SHA256,
-		},
+		// TLS 1.3
+		tls.TLS_AES_128_GCM_SHA256,
+		tls.TLS_AES_256_GCM_SHA384,
+		tls.TLS_CHACHA20_POLY1305_SHA256,
+	},
 
-		PreferServerCipherSuites: true,
+	PreferServerCipherSuites: true,
 
-		MinVersion: tls.VersionTLS12,
-		MaxVersion: tls.VersionTLS13,
+	MinVersion: tls.VersionTLS12,
+	MaxVersion: tls.VersionTLS13,
 
-		CurvePreferences: []tls.CurveID{
-			tls.CurveP256,
-			tls.X25519,
-		},
-	}
-)
+	CurvePreferences: []tls.CurveID{
+		tls.CurveP256,
+		tls.X25519,
+	},
+}
 
 // Server .
 type Server struct {
@@ -111,7 +107,7 @@ func New(ops ...Opt) (*Server, error) {
 						"recovered from panic in http#Handler",
 						zap.String("error", err.(string)),
 					)
-					// TODO: Write InternalServerError
+					// TODO: Write http#InternalServerError
 				}
 
 				remoteAddr, _, err := net.SplitHostPort(r.RemoteAddr)
@@ -149,26 +145,31 @@ func New(ops ...Opt) (*Server, error) {
 				)
 			}()
 
+			w.Header().Set("Server", "Cosmos")
+			w.Header().Set("Vary", "Accept-Encoding")
+			w.Header().Set("X-Content-Type-Options", "nosniff")
+			w.Header().Set("X-Frame-Options", "DENY")
+			w.Header().Set("X-XSS-Protection", "1; mode=block")
+
 			next.ServeHTTP(w, r)
 		})
 	})
 	s.router.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusNoContent)
+		w.WriteHeader(http.StatusOK)
 	})
 	return s, nil
 }
 
 // Listen .
-func (s *Server) Listen() []error {
+func (s *Server) Listen(ctx context.Context) []error {
 	var errs []error
 	for _, lc := range s.config.Listeners {
-		l, err := net.Listen(lc.Network.String(), lc.Address)
+		var lc2 net.ListenConfig
+		lc2.KeepAlive = lc.KeepAlive
+		l, err := lc2.Listen(ctx, lc.Network.String(), lc.Address)
 		if err != nil {
 			errs = append(errs, err)
 			continue
-		}
-		if l2, ok := l.(*net.TCPListener); ok {
-			l = listener.Wrap(l2, lc.KeepAlive)
 		}
 		s.listeners = append(s.listeners, l)
 	}
