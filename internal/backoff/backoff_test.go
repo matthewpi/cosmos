@@ -20,21 +20,36 @@
 // SOFTWARE.
 //
 
-// Package metrics ...
-package metrics
+package backoff_test
 
 import (
-	"strconv"
+	"context"
+	"testing"
+	"time"
 
-	"github.com/VictoriaMetrics/metrics"
+	"github.com/matthewpi/cosmos/internal/backoff"
 )
 
-// RequestsTotal .
-func RequestsTotal(method, route string, code int) *metrics.Counter {
-	return metrics.GetOrCreateCounter("cosmos_http_requests_total{method=\"" + method + "\",route=\"" + route + "\",code=\"" + strconv.Itoa(code) + "\"}")
+func TestNew(t *testing.T) {
+	// TODO
 }
 
-// RequestDuration .
-func RequestDuration(route string) *metrics.Histogram {
-	return metrics.GetOrCreateHistogram("cosmos_http_request_duration_seconds{route=\"" + route + "\"}")
+func TestBackoff_Attempt(t *testing.T) {
+	// TODO
+}
+
+func TestBackoff_Duration(t *testing.T) {
+	// TODO
+}
+
+func TestBackoff_Next(t *testing.T) {
+	// TODO
+}
+
+func ExampleNew() {
+	b := backoff.New(3, 2, 1*time.Second, 5*time.Second)
+	for b.Next(context.Background()) {
+		// Do something
+		// break if successful, continue on failure
+	}
 }

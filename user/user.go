@@ -72,6 +72,11 @@ func New(email string, password []byte) (*User, error) {
 	return u, nil
 }
 
+// HasPassword .
+func (u *User) HasPassword() bool {
+	return u.password != ""
+}
+
 // SetPassword hashes a raw password and updates the user's password.
 func (u *User) SetPassword(password []byte) error {
 	h, err := argon2.Hash(password)

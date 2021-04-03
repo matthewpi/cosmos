@@ -26,7 +26,7 @@
 //
 // The Forwarded HTTP Extension is a better and standardized version
 // of the "X-Forwarded-For" header which lacks detailed information
-// about what proxies touched the request.
+// about what proxies forwarded the request.
 //
 // Resources
 // - https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Forwarded

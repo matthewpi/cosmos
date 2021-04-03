@@ -51,7 +51,7 @@ type Listener struct {
 	Address string
 
 	// KeepAlive is a duration to keep the connection alive for.
-	// Only used for NetworkTCP, NetworkTCP4, and NetworkTCP6
+	// Only used for NetworkTCP, NetworkTCP4, and NetworkTCP6.
 	KeepAlive time.Duration
 
 	// CertPath is a path to a SSL certificate.
