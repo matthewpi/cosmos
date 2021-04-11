@@ -33,7 +33,7 @@ import (
 // User represents a Cosmos User.
 type User struct {
 	// ID is the user's unique identifier. (unique, crypto-secure random)
-	ID snowflake.Snowflake
+	ID snowflake.Snowflake `json:"id"`
 
 	// Email is the user's email address. (unique, end-user data)
 	Email string `json:"email,omitempty"`
