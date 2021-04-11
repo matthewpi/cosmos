@@ -49,7 +49,6 @@ func New() (UUID, error) {
 // Dashed returns the UUID encoded with hex, and formatted with dashes.
 func (u UUID) Dashed() string {
 	var buf [36]byte
-
 	hex.Encode(buf[:], u[:4])
 	buf[8] = '-'
 	hex.Encode(buf[9:13], u[4:6])
@@ -59,7 +58,6 @@ func (u UUID) Dashed() string {
 	hex.Encode(buf[19:23], u[8:10])
 	buf[23] = '-'
 	hex.Encode(buf[24:], u[10:])
-
 	return string(buf[:])
 }
 
