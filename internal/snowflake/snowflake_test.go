@@ -92,10 +92,6 @@ func TestSnowflake_Valid(t *testing.T) {
 			snowflake: snowflake.Nil,
 			expect:    false,
 		},
-		{
-			snowflake: snowflake.Zero,
-			expect:    false,
-		},
 	} {
 		result := tc.snowflake.Valid()
 
@@ -107,21 +103,22 @@ func TestSnowflake_Valid(t *testing.T) {
 }
 
 func TestSnowflake_Time(t *testing.T) {
+	now := time.Now()
 	for i, tc := range []struct {
 		snowflake snowflake.Snowflake
 		expect    time.Time
 	}{
+		{
+			snowflake: snowflake.NewAtTime(now),
+			expect:    now.UTC().Round(time.Millisecond),
+		},
 		{
 			snowflake: snowflake.NewAtTime(time.Date(2021, 5, 24, 12, 38, 38, 333*int(time.Millisecond), time.UTC)),
 			expect:    time.Date(2021, 5, 24, 12, 38, 38, 333*int(time.Millisecond), time.UTC).UTC(),
 		},
 		{
 			snowflake: snowflake.Nil,
-			expect:    snowflake.Nil.Time(),
-		},
-		{
-			snowflake: snowflake.Zero,
-			expect:    snowflake.Zero.Time(),
+			expect:    snowflake.Nil.Time().UTC(),
 		},
 	} {
 		result := tc.snowflake.Time().UTC()
@@ -144,10 +141,6 @@ func TestSnowflake_String(t *testing.T) {
 		},
 		{
 			snowflake: snowflake.Nil,
-			expect:    "",
-		},
-		{
-			snowflake: snowflake.Zero,
 			expect:    "",
 		},
 	} {
@@ -173,11 +166,6 @@ func TestSnowflake_MarshalJSON(t *testing.T) {
 		},
 		{
 			snowflake: snowflake.Nil,
-			expect:    []byte("null"),
-			expectErr: nil,
-		},
-		{
-			snowflake: snowflake.Zero,
 			expect:    []byte("null"),
 			expectErr: nil,
 		},

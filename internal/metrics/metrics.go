@@ -31,10 +31,18 @@ import (
 
 // RequestsTotal .
 func RequestsTotal(method, route string, code int) *metrics.Counter {
-	return metrics.GetOrCreateCounter("cosmos_http_requests_total{method=\"" + method + "\",route=\"" + route + "\",code=\"" + strconv.Itoa(code) + "\"}")
+	return metrics.GetOrCreateCounter(
+		"cosmos_http_requests_total{" +
+			"method=\"" + method + "\"," +
+			"route=\"" + route + "\"," +
+			"code=\"" + strconv.Itoa(code) + "\"" +
+			"}",
+	)
 }
 
 // RequestDuration .
 func RequestDuration(route string) *metrics.Histogram {
-	return metrics.GetOrCreateHistogram("cosmos_http_request_duration_seconds{route=\"" + route + "\"}")
+	return metrics.GetOrCreateHistogram(
+		"cosmos_http_request_duration_seconds{route=\"" + route + "\"}",
+	)
 }

@@ -24,13 +24,8 @@
 package snowflake
 
 import (
-	"crypto/rand"
 	"encoding/json"
 	"fmt"
-	"hash/fnv"
-	"math"
-	"math/big"
-	"net"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -42,25 +37,26 @@ const (
 	epoch = 1609459200000 * time.Millisecond
 
 	// Nil is a nil/null snowflake.
-	Nil Snowflake = -1
-
-	// Zero is a zero snowflake. (unset/omitted)
-	Zero Snowflake = 0
+	Nil = ^Snowflake(0)
 )
 
 var (
-	nodeID = getNodeID()
+	NodeID = 1
 
-	sequence *int64
+	sequence *uint64
 )
 
 func init() {
-	seq := int64(0)
+	seq := uint64(0)
 	sequence = &seq
 }
 
 // Snowflake represents a snowflake.
-type Snowflake int64
+//
+// Timestamp - 63 to 22 (42 bits)
+// Node ID   - 21 to 12 (10 bits)
+// Increment - 11 to  0 (12 bits)
+type Snowflake uint64
 
 var _ fmt.Stringer = (*Snowflake)(nil)
 var _ json.Marshaler = (*Snowflake)(nil)
@@ -68,18 +64,22 @@ var _ json.Unmarshaler = (*Snowflake)(nil)
 
 // New returns a new snowflake.
 func New() Snowflake {
-	return NewAtTime(time.Now())
+	id := newAtTime(time.Now())
+	id |= uint64(NodeID << 53)
+
+	atomic.AddUint64(sequence, 1)
+	id |= atomic.LoadUint64(sequence)
+
+	return Snowflake(id)
 }
 
 // NewAtTime returns a new snowflake using the specified time.
 func NewAtTime(t time.Time) Snowflake {
-	id := int64(((time.Duration(t.UnixNano()) - epoch) / time.Millisecond) << 22)
-	id |= int64(nodeID << 20)
+	return Snowflake(newAtTime(t))
+}
 
-	atomic.AddInt64(sequence, 1)
-	id |= atomic.LoadInt64(sequence)
-
-	return Snowflake(id)
+func newAtTime(t time.Time) uint64 {
+	return uint64(((time.Duration(t.UnixNano()) - epoch) / time.Millisecond) << 22)
 }
 
 // Parse parses a string into a snowflake.
@@ -92,7 +92,6 @@ func Parse(snowflake string) Snowflake {
 	if err != nil {
 		return Nil
 	}
-
 	return Snowflake(i)
 }
 
@@ -107,7 +106,7 @@ func (s Snowflake) Time() time.Time {
 		return time.Time{}
 	}
 
-	unixNano := ((time.Duration(s) >> 22) * time.Millisecond) + epoch
+	unixNano := (time.Duration(s)>>22)*time.Millisecond + epoch
 	return time.Unix(0, int64(unixNano))
 }
 
@@ -133,44 +132,4 @@ func (s Snowflake) MarshalJSON() ([]byte, error) {
 func (s *Snowflake) UnmarshalJSON(v []byte) error {
 	*s = Parse(strings.Trim(string(v), `"`))
 	return nil
-}
-
-// ---------------------------------- \\
-
-func getMac() string {
-	interfaces, err := net.Interfaces()
-	if err != nil {
-		return ""
-	}
-
-	var mac string
-	for _, i := range interfaces {
-		addr := i.HardwareAddr.String()
-		if addr != "" {
-			mac += addr
-		}
-	}
-
-	return mac
-}
-
-func getNodeID() int {
-	var id int
-	mac := getMac()
-	if mac != "" {
-		h := fnv.New32a()
-		id = int(h.Sum32())
-	}
-
-	if id == 0 {
-		n, err := rand.Int(rand.Reader, big.NewInt(100))
-		if err != nil {
-			panic(err)
-			return 0
-		}
-
-		return int(n.Int64())
-	}
-
-	return id & (int)(math.Pow(2, float64(10))-1)
 }
