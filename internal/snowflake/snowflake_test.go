@@ -110,7 +110,7 @@ func TestSnowflake_Time(t *testing.T) {
 	}{
 		{
 			snowflake: snowflake.NewAtTime(now),
-			expect:    now.UTC().Round(time.Millisecond),
+			expect:    now.UTC().Truncate(time.Millisecond),
 		},
 		{
 			snowflake: snowflake.NewAtTime(time.Date(2021, 5, 24, 12, 38, 38, 333*int(time.Millisecond), time.UTC)),
