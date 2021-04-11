@@ -20,32 +20,39 @@
 // SOFTWARE.
 //
 
-package log
+// Package config ...
+package config
 
-// Level .
-type Level int8
+import (
+	"os"
 
-const (
-	// DebugLevel .
-	DebugLevel Level = iota - 1
-	// InfoLevel .
-	InfoLevel
-	// WarnLevel .
-	WarnLevel
-	// ErrorLevel .
-	ErrorLevel
-	_ // DPanicLevel
-	// PanicLevel .
-	PanicLevel
-	// FatalLevel .
-	FatalLevel
+	"github.com/matthewpi/cosmos/internal/config/lexer"
 )
 
-var Levels = map[string]Level{
-	"debug": DebugLevel,
-	"info":  InfoLevel,
-	"warn":  WarnLevel,
-	"error": ErrorLevel,
-	"panic": PanicLevel,
-	"fatal": FatalLevel,
+// Config .
+type Config []lexer.Block
+
+// Load .
+func Load(file string) (Config, error) {
+	f, err := os.ReadFile(file)
+	if err != nil {
+		return nil, err
+	}
+	blocks, err := lexer.Parse(file, f)
+	if err != nil {
+		return nil, err
+	}
+	return blocks, nil
+}
+
+func (c Config) Key(key string) []lexer.Segment {
+	for _, v := range c {
+		for _, k := range v.Keys {
+			if k != key {
+				continue
+			}
+			return v.Segments
+		}
+	}
+	return nil
 }

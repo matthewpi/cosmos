@@ -26,8 +26,10 @@ import (
 	"context"
 	"os"
 	"os/signal"
+	"strings"
 	"time"
 
+	"github.com/matthewpi/cosmos/internal/config"
 	"go.uber.org/zap"
 
 	"github.com/matthewpi/cosmos"
@@ -37,7 +39,31 @@ import (
 )
 
 func main() {
-	l, err := log.New(log.WithLevel(log.DebugLevel))
+	cfg, err := config.Load(".env/cosmos.conf")
+	if err != nil {
+		panic(err)
+		return
+	}
+
+	k := cfg.Key("log")
+	var opts []log.Opt
+	for _, s := range k {
+		d := s.Directive()
+		switch d {
+		case "output":
+		case "level":
+			if len(s) != 2 {
+				return
+			}
+			l, ok := log.Levels[strings.ToLower(s[1].Text)]
+			if !ok {
+				return
+			}
+			opts = append(opts, log.WithLevel(l))
+		}
+	}
+
+	l, err := log.New(opts...)
 	if err != nil {
 		panic(err)
 		return
