@@ -35,12 +35,12 @@ type Config struct {
 	Level Level `json:"level"`
 }
 
+// FromLexer .
 func FromLexer(b lexer.Block) (*Config, error) {
 	c := &Config{}
 	for _, s := range b.Segments {
 		d := s.Directive()
 		switch d {
-		case "output":
 		case "level":
 			if len(s) < 2 {
 				return nil, fmt.Errorf("missing level after level directive")
