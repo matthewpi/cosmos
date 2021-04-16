@@ -25,6 +25,8 @@ package db
 
 import (
 	"fmt"
+
+	_ "github.com/matthewpi/pgx/v4"
 )
 
 // DB .
