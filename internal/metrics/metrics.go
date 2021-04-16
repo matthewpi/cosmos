@@ -24,10 +24,26 @@
 package metrics
 
 import (
+	"io"
 	"strconv"
 
 	"github.com/VictoriaMetrics/metrics"
 )
+
+// WritePrometheus writes all the registered metrics in Prometheus format to w.
+//
+// If exposeProcessMetrics is true, then various `go_*` and `process_*` metrics
+// are exposed for the current process.
+//
+// The WritePrometheus func is usually called inside "/metrics" handler:
+//
+//     http.HandleFunc("/metrics", func(w http.ResponseWriter, req *http.Request) {
+//         metrics.WritePrometheus(w, true)
+//     })
+//
+func WritePrometheus(w io.Writer, exposeProcessMetrics bool) {
+	metrics.WritePrometheus(w, exposeProcessMetrics)
+}
 
 // RequestsTotal .
 func RequestsTotal(method, route string, code int) *metrics.Counter {

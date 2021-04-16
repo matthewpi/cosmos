@@ -40,8 +40,13 @@ import (
 	"github.com/matthewpi/cosmos/internal/metrics"
 )
 
-// ErrNoListeners .
-var ErrNoListeners = errors.New("server: no listeners defined")
+var (
+	// ErrNoListeners .
+	ErrNoListeners = errors.New("server: no listeners defined")
+
+	// ErrAlreadyServing .
+	ErrAlreadyServing = errors.New("server: already serving")
+)
 
 var defaultTLSConfig = &tls.Config{
 	NextProtos: []string{
@@ -132,8 +137,10 @@ func New(ops ...Opt) (*Server, error) {
 				code := 200
 				duration := time.Since(start)
 
-				metrics.RequestsTotal(method, route, code).Inc()
-				metrics.RequestDuration(route).Update(duration.Seconds())
+				if code != 404 {
+					metrics.RequestsTotal(method, route, code).Inc()
+					metrics.RequestDuration(route).Update(duration.Seconds())
+				}
 
 				cosmos.Log().Info(
 					"handled request",
@@ -157,6 +164,9 @@ func New(ops ...Opt) (*Server, error) {
 	s.router.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
+	s.router.Get("/metrics", func(w http.ResponseWriter, r *http.Request) {
+		metrics.WritePrometheus(w, true)
+	})
 	return s, nil
 }
 
@@ -171,6 +181,7 @@ func (s *Server) Listen(ctx context.Context) []error {
 			errs = append(errs, err)
 			continue
 		}
+		cosmos.Log().Info("listening on " + l.Addr().String())
 		s.listeners = append(s.listeners, l)
 	}
 	return errs
@@ -181,6 +192,13 @@ func (s *Server) Serve(ctx context.Context) error {
 	if s.listeners == nil || len(s.listeners) < 1 {
 		return ErrNoListeners
 	}
+	if s.servers != nil && len(s.servers) > 0 {
+		return ErrAlreadyServing
+	}
+	defer func() {
+		s.servers = nil
+	}()
+
 	l := zap.NewStdLog(cosmos.Log())
 	g, ctx := errgroup.WithContext(ctx)
 	for i, lc := range s.config.Listeners {

@@ -56,6 +56,8 @@ func main() {
 		panic(err)
 		return
 	}
+	undo := zap.RedirectStdLog(productionLogger)
+	defer undo()
 	log.SetGlobal(productionLogger)
 	defer cosmos.Log().Sync()
 
