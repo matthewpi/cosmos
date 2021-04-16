@@ -57,6 +57,13 @@ func New(ops ...Opt) (*Logger, error) {
 	return l, nil
 }
 
+// NewWithConfig .
+func NewWithConfig(c *Config) *Logger {
+	return &Logger{
+		Config: c,
+	}
+}
+
 // Production .
 func (l *Logger) Production() (*zap.Logger, error) {
 	config := zap.NewProductionEncoderConfig()

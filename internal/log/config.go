@@ -22,8 +22,39 @@
 
 package log
 
+import (
+	"fmt"
+	"strings"
+
+	"github.com/matthewpi/cosmos/internal/config/lexer"
+)
+
 // Config .
 type Config struct {
 	// Level .
 	Level Level `json:"level"`
+}
+
+func FromLexer(b lexer.Block) (*Config, error) {
+	c := &Config{}
+	for _, s := range b.Segments {
+		d := s.Directive()
+		switch d {
+		case "output":
+		case "level":
+			if len(s) < 2 {
+				return nil, fmt.Errorf("missing level after level directive")
+			}
+			if len(s) > 2 {
+				return nil, fmt.Errorf("too many arguments after level directive")
+			}
+			k := strings.ToLower(s[1].Text)
+			l, ok := Levels[k]
+			if !ok {
+				return nil, fmt.Errorf("unknown level: \"%s\"", k)
+			}
+			c.Level = l
+		}
+	}
+	return c, nil
 }

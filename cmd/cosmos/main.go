@@ -26,7 +26,6 @@ import (
 	"context"
 	"os"
 	"os/signal"
-	"strings"
 	"time"
 
 	"github.com/matthewpi/cosmos/internal/config"
@@ -45,28 +44,12 @@ func main() {
 		return
 	}
 
-	var opts []log.Opt
-	for _, s := range cfg.Key("log").Segments {
-		d := s.Directive()
-		switch d {
-		case "output":
-		case "level":
-			if len(s) != 2 {
-				return
-			}
-			l, ok := log.Levels[strings.ToLower(s[1].Text)]
-			if !ok {
-				return
-			}
-			opts = append(opts, log.WithLevel(l))
-		}
-	}
-
-	l, err := log.New(opts...)
+	lCfg, err := log.FromLexer(cfg.Key("log"))
 	if err != nil {
 		panic(err)
 		return
 	}
+	l := log.NewWithConfig(lCfg)
 
 	productionLogger, err := l.Production()
 	if err != nil {
