@@ -45,14 +45,14 @@ func Load(file string) (Config, error) {
 	return blocks, nil
 }
 
-func (c Config) Key(key string) []lexer.Segment {
+func (c Config) Key(key string) lexer.Block {
 	for _, v := range c {
 		for _, k := range v.Keys {
 			if k != key {
 				continue
 			}
-			return v.Segments
+			return v
 		}
 	}
-	return nil
+	return lexer.Block{}
 }

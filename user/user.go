@@ -72,7 +72,7 @@ func New(email string, password []byte) (*User, error) {
 	return u, nil
 }
 
-// HasPassword .
+// HasPassword returns true if the user has a password.
 func (u *User) HasPassword() bool {
 	return u.password != ""
 }

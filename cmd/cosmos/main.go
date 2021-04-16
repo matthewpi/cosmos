@@ -45,9 +45,8 @@ func main() {
 		return
 	}
 
-	k := cfg.Key("log")
 	var opts []log.Opt
-	for _, s := range k {
+	for _, s := range cfg.Key("log").Segments {
 		d := s.Directive()
 		switch d {
 		case "output":
