@@ -23,7 +23,7 @@
 # Stage 1 (Build)
 FROM        --platform=$BUILDPLATFORM golang:1.16-alpine3.13
 
-RUN         apk add --update --no-cache ca-certificates=20191127-r5 git=2.30.1-r0 tzdata=2021a-r0
+RUN         apk add --update --no-cache ca-certificates=20191127-r5 git=2.30.2-r0 tzdata=2021a-r0
 
 WORKDIR     /app/
 COPY        go.mod go.sum /app/
@@ -35,7 +35,7 @@ RUN         CGO_ENABLED=0 go build -ldflags "-s -w" -trimpath -v -o cosmos cmd/c
 # Stage 2 (Final)
 FROM        alpine:3.13
 
-LABEL       author="Matthew Penner" maintainer="matthew@pterodactyl.io"
+LABEL       author="Matthew Penner" maintainer="me@matthewp.io"
 
 RUN         apk add --update --no-cache ca-certificates=20191127-r5 tzdata=2021a-r0
 COPY        --from=builder /app/cosmos /usr/bin/
