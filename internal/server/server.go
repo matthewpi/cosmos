@@ -32,6 +32,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/matthewpi/cosmos/internal/server/listener"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
@@ -41,10 +42,18 @@ import (
 )
 
 var (
-	// ErrNoListeners .
+	// ErrNoListeners is returned when Server.Serve() is called before
+	// Server.Listen()
 	ErrNoListeners = errors.New("server: no listeners defined")
 
-	// ErrAlreadyServing .
+	// ErrMissingListener is returned by Server.Serve() when the number of
+	// listeners created by Server.Listen() doesn't match the number of
+	// listeners set in Config.Listeners.
+	ErrMissingListener = errors.New("server: missing listener")
+
+	// ErrAlreadyServing is returned by Server.Serve() when there are already
+	// servers listening.  Before calling Server.Serve() again, Server.Close()
+	// should be called to ensure all servers and listeners are closed.
 	ErrAlreadyServing = errors.New("server: already serving")
 )
 
@@ -86,87 +95,34 @@ type Server struct {
 
 	listeners []net.Listener
 	servers   []*http.Server
-	router    *chi.Mux
+
+	newRouter func(l listener.Listener) *chi.Mux
 }
 
 // New .
 func New(ops ...Opt) (*Server, error) {
 	s := &Server{
 		config: &Config{},
-		router: chi.NewRouter(),
+
+		newRouter: func(l listener.Listener) *chi.Mux {
+			r := chi.NewRouter()
+			r.Use(loggingAndRecovery)
+			r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusOK)
+			})
+			if l.Metrics != "" {
+				r.Get(l.Metrics, func(w http.ResponseWriter, r *http.Request) {
+					metrics.WritePrometheus(w, true)
+				})
+			}
+			return r
+		},
 	}
 	for _, op := range ops {
 		if err := op(s); err != nil {
 			return nil, err
 		}
 	}
-	s.router.Use(func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			start := time.Now()
-
-			defer func() {
-				if err := recover(); err != nil {
-					// I swear this log call will panic while we try
-					// to recover from a panic.
-					cosmos.Log().Error(
-						"recovered from panic in http#Handler",
-						zap.String("error", err.(string)),
-					)
-					// TODO: Write http#InternalServerError
-				}
-
-				remoteAddr, _, err := net.SplitHostPort(r.RemoteAddr)
-				if err != nil {
-					panic(err)
-					return
-				}
-
-				var route string
-				if ctx := chi.RouteContext(r.Context()); ctx != nil {
-					if route = ctx.RoutePattern(); route != "/" {
-						route = strings.TrimSuffix(route, "/")
-					}
-				} else {
-					route = r.URL.Path
-				}
-				if route == "" {
-					return
-				}
-
-				method := r.Method
-				code := 200
-				duration := time.Since(start)
-
-				if code != 404 {
-					metrics.RequestsTotal(method, route, code).Inc()
-					metrics.RequestDuration(route).Update(duration.Seconds())
-				}
-
-				cosmos.Log().Info(
-					"handled request",
-					zap.String("remote", remoteAddr),
-					zap.String("method", method),
-					zap.String("route", route),
-					zap.Int("code", code),
-					zap.Duration("duration", duration.Round(time.Microsecond)),
-				)
-			}()
-
-			w.Header().Set("Server", "Cosmos")
-			w.Header().Set("Vary", "Accept-Encoding")
-			w.Header().Set("X-Content-Type-Options", "nosniff")
-			w.Header().Set("X-Frame-Options", "DENY")
-			w.Header().Set("X-XSS-Protection", "1; mode=block")
-
-			next.ServeHTTP(w, r)
-		})
-	})
-	s.router.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	})
-	s.router.Get("/metrics", func(w http.ResponseWriter, r *http.Request) {
-		metrics.WritePrometheus(w, true)
-	})
 	return s, nil
 }
 
@@ -192,19 +148,25 @@ func (s *Server) Serve(ctx context.Context) error {
 	if s.listeners == nil || len(s.listeners) < 1 {
 		return ErrNoListeners
 	}
+	if len(s.listeners) != len(s.config.Listeners) {
+		return ErrMissingListener
+	}
 	if s.servers != nil && len(s.servers) > 0 {
 		return ErrAlreadyServing
 	}
 	defer func() {
 		s.servers = nil
+		s.listeners = nil
 	}()
 
-	l := zap.NewStdLog(cosmos.Log())
+	stdLog := zap.NewStdLog(cosmos.Log())
 	g, ctx := errgroup.WithContext(ctx)
 	for i, lc := range s.config.Listeners {
+		l := s.listeners[i]
+		addr := l.Addr().String()
 		hs := &http.Server{
-			Addr:    lc.Address,
-			Handler: s.router,
+			Addr:    addr,
+			Handler: s.newRouter(lc),
 
 			TLSConfig: nil,
 
@@ -215,13 +177,16 @@ func (s *Server) Serve(ctx context.Context) error {
 
 			MaxHeaderBytes: http.DefaultMaxHeaderBytes,
 
-			ErrorLog: l,
+			ErrorLog: stdLog,
 		}
 		s.servers = append(s.servers, hs)
+		cosmos.Log().Info("serving on " + addr)
 
 		if certPath, keyPath := lc.CertPath, lc.KeyPath; certPath == "" || keyPath == "" {
 			g.Go(func() error {
-				if err := hs.Serve(s.listeners[i]); err != http.ErrServerClosed {
+				if err := hs.Serve(l); err != nil &&
+					err != http.ErrServerClosed &&
+					!strings.HasSuffix(err.Error(), " use of closed network connection") {
 					return err
 				}
 				return nil
@@ -229,7 +194,9 @@ func (s *Server) Serve(ctx context.Context) error {
 		} else {
 			hs.TLSConfig = defaultTLSConfig
 			g.Go(func() error {
-				if err := hs.ServeTLS(s.listeners[i], certPath, keyPath); err != http.ErrServerClosed {
+				if err := hs.ServeTLS(l, certPath, keyPath); err != nil &&
+					err != http.ErrServerClosed &&
+					!strings.HasSuffix(err.Error(), " use of closed network connection") {
 					return err
 				}
 				return nil
@@ -249,4 +216,66 @@ func (s *Server) Close(ctx context.Context) error {
 		})
 	}
 	return g.Wait()
+}
+
+func loggingAndRecovery(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+
+		defer func() {
+			if err := recover(); err != nil {
+				// I swear this log call will panic while we try
+				// to recover from a panic.
+				cosmos.Log().Error(
+					"recovered from panic in http#Handler",
+					zap.String("error", err.(string)),
+				)
+				// TODO: Write http#InternalServerError
+			}
+
+			remoteAddr, _, err := net.SplitHostPort(r.RemoteAddr)
+			if err != nil {
+				panic(err)
+				return
+			}
+
+			var route string
+			if ctx := chi.RouteContext(r.Context()); ctx != nil {
+				if route = ctx.RoutePattern(); route != "/" {
+					route = strings.TrimSuffix(route, "/")
+				}
+			} else {
+				route = r.URL.Path
+			}
+			if route == "" {
+				return
+			}
+
+			method := r.Method
+			code := 200
+			duration := time.Since(start)
+
+			if code != 404 {
+				metrics.RequestsTotal(method, route, code).Inc()
+				metrics.RequestDuration(route).Update(duration.Seconds())
+			}
+
+			cosmos.Log().Info(
+				"handled request",
+				zap.String("remote", remoteAddr),
+				zap.String("method", method),
+				zap.String("route", route),
+				zap.Int("code", code),
+				zap.Duration("duration", duration.Round(time.Microsecond)),
+			)
+		}()
+
+		w.Header().Set("Server", "Cosmos")
+		w.Header().Set("Vary", "Accept-Encoding")
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("X-Frame-Options", "DENY")
+		w.Header().Set("X-XSS-Protection", "1; mode=block")
+
+		next.ServeHTTP(w, r)
+	})
 }

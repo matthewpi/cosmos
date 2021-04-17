@@ -36,7 +36,7 @@ type Config struct {
 }
 
 // FromLexer .
-func FromLexer(b lexer.Block) (*Config, error) {
+func FromLexer(b lexer.Block) (*Logger, error) {
 	c := &Config{}
 	for _, s := range b.Segments {
 		d := s.Directive()
@@ -56,5 +56,5 @@ func FromLexer(b lexer.Block) (*Config, error) {
 			c.Level = l
 		}
 	}
-	return c, nil
+	return NewWithConfig(c), nil
 }

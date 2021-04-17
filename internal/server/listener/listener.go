@@ -58,6 +58,9 @@ type Listener struct {
 	CertPath string
 	// KeyPath is a path to a SSL private key.
 	KeyPath string
+
+	// Metrics determines if a metrics endpoint will be exposed on this listener.
+	Metrics string
 }
 
 // TCPKeepAliveListener is a TCPListener with a keep alive.

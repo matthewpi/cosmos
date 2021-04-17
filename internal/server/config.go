@@ -23,11 +23,66 @@
 package server
 
 import (
-	"github.com/matthewpi/cosmos/internal/listener"
+	"fmt"
+
+	"github.com/matthewpi/cosmos/internal/config/lexer"
+	"github.com/matthewpi/cosmos/internal/server/listener"
 )
 
 // Config represents the configuration for a Server.
 type Config struct {
 	// Listeners is a slice of listeners to bind to.
 	Listeners []listener.Listener
+}
+
+// FromLexer .
+func FromLexer(b lexer.Block) (*Server, error) {
+	var opts []Opt
+
+	var tokens []lexer.Token
+	for _, s := range b.Segments {
+		tokens = append(tokens, s...)
+	}
+	d := lexer.NewDispenser(tokens)
+
+	for d.Next() {
+		dir := d.Val()
+		switch dir {
+		case "listen":
+			l := listener.Listener{
+				Network: listener.NetworkTCP,
+			}
+			for d.NextArg() {
+				v := d.Val()
+				if len(v) < 1 {
+					return nil, fmt.Errorf("empty argument after listen directive")
+				}
+				l.Address = v
+			}
+			if l.Address == "" {
+				return nil, fmt.Errorf("missing argument after \"listen\" directive")
+			}
+			for nesting := d.Nesting(); d.NextBlock(nesting); {
+				subdir := d.Val()
+				switch subdir {
+				case "metrics":
+					l.Metrics = "/metrics"
+					for d.NextArg() {
+						return nil, fmt.Errorf("unexpected argument after metrics directive")
+					}
+				case "{":
+					return nil, fmt.Errorf("unexpected start of block")
+				case "}":
+					return nil, fmt.Errorf("unexpected closing of block")
+				default:
+					return nil, fmt.Errorf("unknown sub-directive: \"" + subdir + "\"")
+				}
+			}
+			opts = append(opts, WithListener(l))
+		default:
+			return nil, fmt.Errorf("unknown directive: \"" + d.Val() + "\"")
+		}
+	}
+
+	return New(opts...)
 }

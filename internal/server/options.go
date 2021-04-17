@@ -23,7 +23,7 @@
 package server
 
 import (
-	"github.com/matthewpi/cosmos/internal/listener"
+	"github.com/matthewpi/cosmos/internal/server/listener"
 )
 
 // Opt is a configuration option to initialize a server.

@@ -24,6 +24,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/signal"
 	"time"
@@ -32,24 +33,35 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/matthewpi/cosmos"
-	"github.com/matthewpi/cosmos/internal/listener"
 	"github.com/matthewpi/cosmos/internal/log"
 	"github.com/matthewpi/cosmos/internal/server"
 )
 
 func main() {
+	fmt.Print(`
+   ______
+  / ____/___  _________ ___  ____  _____
+ / /   / __ \/ ___/ __  __ \/ __ \/ ___/
+/ /___/ /_/ (__  ) / / / / / /_/ (__  )
+\____/\____/____/_/ /_/ /_/\____/____/
+
+Copyright © 2021 Matthew Penner
+
+Source:  https://github.com/matthewpi/cosmos
+License: https://github.com/matthewpi/cosmos/blob/master/LICENSE.md
+
+`)
 	cfg, err := config.Load(".env/cosmos.conf")
 	if err != nil {
 		panic(err)
 		return
 	}
 
-	lCfg, err := log.FromLexer(cfg.Key("log"))
+	l, err := log.FromLexer(cfg.Key("log"))
 	if err != nil {
 		panic(err)
 		return
 	}
-	l := log.NewWithConfig(lCfg)
 
 	productionLogger, err := l.Production()
 	if err != nil {
@@ -61,14 +73,7 @@ func main() {
 	log.SetGlobal(productionLogger)
 	defer cosmos.Log().Sync()
 
-	cosmos.Log().Info("Hello, world!")
-
-	s, err := server.New(
-		server.WithListener(listener.Listener{
-			Network: listener.NetworkTCP,
-			Address: ":9000",
-		}),
-	)
+	s, err := server.FromLexer(cfg.Key("http"))
 	if err != nil {
 		cosmos.Log().Fatal("failed to create new server", zap.Error(err))
 		return
@@ -76,7 +81,6 @@ func main() {
 	defer func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-
 		if err := s.Close(ctx); err != nil {
 			cosmos.Log().Error("failed to close server", zap.Error(err))
 			return
@@ -94,7 +98,7 @@ func main() {
 	}
 
 	go func() {
-		cosmos.Log().Info("attempting to start http servers...")
+		cosmos.Log().Info("attempting to start serving...")
 		if err := s.Serve(context.Background()); err != nil {
 			cosmos.Log().Error("failed to start serving", zap.Error(err))
 			return
