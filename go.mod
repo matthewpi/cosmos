@@ -3,7 +3,7 @@ module github.com/matthewpi/cosmos
 go 1.16
 
 require (
-	github.com/VictoriaMetrics/metrics v1.17.3
+	github.com/VictoriaMetrics/metrics v1.18.0
 	github.com/go-chi/chi/v5 v5.0.4
 	github.com/jackc/pgproto3/v2 v2.0.7 // indirect
 	github.com/matthewpi/pgx/v4 v4.11.2
